@@ -1,0 +1,12 @@
+version: "1.0"
+name: "compliance-scrubber"
+description: "A data privacy and GDPR compliance simulation environment."
+domain: "cybersecurity"
+tasks:
+  - id: "easy"
+    description: "Find and redact all Social Security Numbers from a text file."
+  - id: "medium"
+    description: "Respond to a GDPR Right to be Forgotten request by purging a specific user across all tables."
+  - id: "hard"
+    description: "Audit a directory and flag transaction logs older than 5 years."
+entrypoint: "server:app"

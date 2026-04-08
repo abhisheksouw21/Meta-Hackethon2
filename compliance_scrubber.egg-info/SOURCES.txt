@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+compliance_scrubber.egg-info/PKG-INFO
+compliance_scrubber.egg-info/SOURCES.txt
+compliance_scrubber.egg-info/dependency_links.txt
+compliance_scrubber.egg-info/entry_points.txt
+compliance_scrubber.egg-info/requires.txt
+compliance_scrubber.egg-info/top_level.txt
+server/app.py
