@@ -63,9 +63,20 @@ def get_state():
 
 @app.get("/tasks")
 def get_tasks():
-    """Reverted to standard OpenEnv format."""
+    """Returns the dictionary of tasks with explicit grader flags."""
     return {
-        "tasks": ["easy", "medium", "hard"]
+        "easy": {
+            "description": "Redact the SSN in user_data.txt",
+            "grader": True
+        },
+        "medium": {
+            "description": "GDPR Compliance - Delete User 405",
+            "grader": True
+        },
+        "hard": {
+            "description": "Data Retention Audit",
+            "grader": True
+        }
     }
 
 @app.post("/grader")
