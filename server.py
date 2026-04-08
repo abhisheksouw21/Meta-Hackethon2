@@ -63,16 +63,14 @@ def get_state():
 
 @app.get("/tasks")
 def get_tasks():
-    """Returns the dictionary of available tasks required by the OpenEnv auto-grader."""
+    """Reverted to standard OpenEnv format."""
     return {
-        "easy": "Redact the SSN in user_data.txt",
-        "medium": "GDPR Compliance - Delete User 405",
-        "hard": "Data Retention Audit (Find logs older than 5 years)"
+        "tasks": ["easy", "medium", "hard"]
     }
 
 @app.post("/grader")
-def get_grader_score():
-    """Returns the current grader score."""
+def get_grader_score(req: Optional[Dict[str, Any]] = None):
+    """Accepts an optional body so the auto-grader doesn't crash."""
     score = env._grade_task()
     return {"score": score}
 

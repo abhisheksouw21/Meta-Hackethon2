@@ -149,6 +149,10 @@ class ComplianceEnv:
         """Calculates the score bounded strictly between 0.01 and 0.99."""
         score = 0.01 # Hackathon rule: cannot start at exactly 0.0
 
+        # CRITICAL PREVENT CRASH: If grader is called before reset
+        if not self.db_connection:
+            self.reset(self.current_task or "easy")
+
         if self.current_task == "easy":
             # EASY: Redact the SSN in user_data.txt
             content = self.filesystem.get("/data/user_data.txt", "")
