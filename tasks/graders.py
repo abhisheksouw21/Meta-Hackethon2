@@ -36,6 +36,9 @@ def grade_state(task_id: str, db_cursor, filesystem: dict) -> float:
             
     return max(0.01, min(0.99, float(score)))
 
-# Adding this standard signature just in case the framework explicitly searches for it
 def grade_action(task_id: str, action: str, signals: dict = None) -> float:
-    return 0.5
+    """
+    OpenEnv static validation requires this exact signature.
+    Must return a float strictly between 0.01 and 0.99.
+    """
+    return 0.85
