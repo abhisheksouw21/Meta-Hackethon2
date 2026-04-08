@@ -4,6 +4,8 @@ from models import (
     Action, Observation, ExecuteSQL, ReadFile, WriteFile, ListFiles, SubmitTask, 
     SQLResult, FileContent, SystemMessage
 )
+# NEW IMPORT: Pulling the decoupled grader from the tasks module
+from tasks.graders import grade_state  
 
 class ComplianceEnv:
     def __init__(self):
@@ -99,8 +101,12 @@ class ComplianceEnv:
             
         elif isinstance(action, SubmitTask):
             done = True
-            # Call the auto-grader when the AI submits
-            reward = float(self._grade_task())
+            
+            # --- NEW: Call the decoupled grader with the current state ---
+            cursor = self.db_connection.cursor() if self.db_connection else None
+            reward = float(grade_state(self.current_task, cursor, self.filesystem))
+            # -------------------------------------------------------------
+            
             obs = SystemMessage(message=f"Task submitted. Reasoning: {action.reasoning}. Final Score: {reward}")
 
         # Force stop if agent takes too long
@@ -143,52 +149,3 @@ class ComplianceEnv:
         if not files:
             return SystemMessage(message=f"No files found in directory: {directory}")
         return SystemMessage(message=f"Files found: {', '.join(files)}")
-
-    # --- GRADING LOGIC ---
-    def _grade_task(self) -> float:
-        """Calculates the score bounded strictly between 0.01 and 0.99."""
-        score = 0.01 # Hackathon rule: cannot start at exactly 0.0
-
-        # CRITICAL PREVENT CRASH: If grader is called before reset
-        if not self.db_connection:
-            self.reset(self.current_task or "easy")
-
-        if self.current_task == "easy":
-            # EASY: Redact the SSN in user_data.txt
-            content = self.filesystem.get("/data/user_data.txt", "")
-            if "[REDACTED]" in content and "555-01-9999" not in content:
-                score = 0.99 # Hackathon rule: cannot return exactly 1.0
-            elif "555-01-9999" not in content:
-                score = 0.5 
-
-        elif self.current_task == "medium":
-            # MEDIUM: GDPR Compliance - Delete User 405, but leave User 404 alone
-            cursor = self.db_connection.cursor()
-            
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE id = 404")
-            if cursor.fetchone()[0] == 0:
-                return 0.01 # Instant fail: cannot return exactly 0.0
-                
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE id = 405")
-            if cursor.fetchone()[0] == 0: score += 0.33
-            
-            cursor.execute("SELECT COUNT(*) FROM Orders WHERE user_id = 405")
-            if cursor.fetchone()[0] == 0: score += 0.33
-            
-            cursor.execute("SELECT COUNT(*) FROM Support_Tickets WHERE user_id = 405")
-            if cursor.fetchone()[0] == 0: score += 0.32
-
-        elif self.current_task == "hard":
-            # HARD: Data Retention Audit (Find logs older than 5 years)
-            report = self.filesystem.get("/violation_report.txt", "")
-            
-            if "tx_2018.log" in report:
-                score += 0.49
-            if "tx_2019.log" in report:
-                score += 0.49
-                
-            if "tx_2024.log" in report:
-                score -= 0.5 # Penalty for false positive
-            
-        # Hard clamp to ensure it never ever hits 0.0 or 1.0 float limits
-        return max(0.01, min(0.99, float(score)))

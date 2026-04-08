@@ -1,9 +1,30 @@
-version: "1.0"
-name: "compliance-scrubber"
+name: Compliance Scrubber
+description: An OpenEnv-compliant environment for cybersecurity compliance.
+version: "1.0.0"
+
+observation_space:
+  type: text
+
+action_space:
+  type: text
+
+endpoints:
+  health: /
+  reset:  /reset
+  step:   /step
+  state:  /state
+
 tasks:
-  - id: "easy"
-    grader: true
-  - id: "medium"
-    grader: true
-  - id: "hard"
-    grader: true
+  - id: easy
+    description: Redact the SSN in user_data.txt
+    steps: 15
+  - id: medium
+    description: GDPR Compliance - Delete User 405
+    steps: 15
+  - id: hard
+    description: Data Retention Audit
+    steps: 15
+
+scoring:
+  reward_range: [0.01, 0.99]
+  success_threshold: 0.5

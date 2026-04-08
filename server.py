@@ -5,6 +5,9 @@ import subprocess
 from environment import ComplianceEnv
 from models import Action, ExecuteSQL, ReadFile, WriteFile, ListFiles, SubmitTask
 
+# NEW IMPORT: Pulling the decoupled grader from the tasks module
+from tasks.graders import grade_state  
+
 app = FastAPI(title="Compliance Scrubber OpenEnv")
 env = ComplianceEnv()
 
@@ -63,33 +66,26 @@ def get_state():
 
 @app.get("/tasks")
 def get_tasks():
-    """Returns the dictionary of tasks with explicit grader flags."""
+    """Reverted to standard OpenEnv format since YAML is handling validation."""
     return {
-        "easy": {
-            "description": "Redact the SSN in user_data.txt",
-            "grader": True
-        },
-        "medium": {
-            "description": "GDPR Compliance - Delete User 405",
-            "grader": True
-        },
-        "hard": {
-            "description": "Data Retention Audit",
-            "grader": True
-        }
+        "tasks": ["easy", "medium", "hard"]
     }
 
 @app.post("/grader")
 def get_grader_score(req: Optional[Dict[str, Any]] = None):
-    """Accepts an optional body so the auto-grader doesn't crash."""
-    score = env._grade_task()
+    """Returns the current grader score using the decoupled logic."""
+    # Prevent crash if baseline hits /grader before /reset
+    if not env.db_connection:
+        env.reset(env.current_task or "easy")
+        
+    cursor = env.db_connection.cursor() if env.db_connection else None
+    score = grade_state(env.current_task, cursor, env.filesystem)
     return {"score": score}
 
 @app.get("/baseline")
 def run_baseline_endpoint():
     """Triggers the inference script and returns the scores."""
     try:
-        # Updated to call inference.py instead of baseline.py
         result = subprocess.run(["python", "inference.py"], capture_output=True, text=True, check=True)
         return {"status": "success", "logs": result.stdout}
     except subprocess.CalledProcessError as e:
