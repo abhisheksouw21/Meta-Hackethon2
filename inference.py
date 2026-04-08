@@ -18,7 +18,7 @@ if not API_KEY:
 client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 BASE_URL = "http://127.0.0.1:7860" # Local port for FastAPI
 
-TASK_NAME = "easy" # You can change this to "medium" or "hard"
+TASK_NAME = "easy" 
 BENCHMARK = "compliance-scrubber"
 MAX_STEPS = 10
 
@@ -31,7 +31,6 @@ def log_start(task: str, env: str, model: str) -> None:
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
     done_val = str(done).lower()
-    # Minifying the action string so it fits on one line as required by the rules
     action_str = json.dumps(action) if isinstance(action, dict) else str(action)
     print(f"[STEP] step={step} action={action_str} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
 
@@ -73,10 +72,9 @@ def run_agent():
     observation = reset_res.get("observation", {})
     done = False
     
-    # Give the LLM the exact Pydantic schema it needs to use
     system_prompt = (
         "You are a cybersecurity AI. You must respond with ONLY valid JSON representing your next action.\n"
-        "Valid action_types: 'ExecuteSQL', 'ReadFile', 'WriteFile', 'SubmitTask'.\n"
+        "Valid action_types: 'ExecuteSQL', 'ReadFile', 'WriteFile', 'ListFiles', 'SubmitTask'.\n"
         "Example output:\n"
         "{\"action_type\": \"ReadFile\", \"action_data\": {\"filepath\": \"/data/user_data.txt\"}}"
     )
@@ -88,21 +86,31 @@ def run_agent():
                 
             steps_taken = step
             
-            # Call OpenAI to get the next action based on the observation
-            completion = client.chat.completions.create(
-                model=MODEL_NAME,
-                response_format={ "type": "json_object" },
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Current Observation: {json.dumps(observation)}. What is your next action JSON?"}
-                ],
-                temperature=0.0
-            )
-            
+            # --- SAFE NETWORK CALL BLOCK ---
             try:
-                action_json = json.loads(completion.choices[0].message.content)
-            except:
-                action_json = {"action_type": "SubmitTask", "action_data": {"reasoning": "Failed to parse LLM output."}}
+                # Call OpenAI/Proxy to get the next action
+                completion = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Current Observation: {json.dumps(observation)}. What is your next action JSON?"}
+                    ],
+                    temperature=0.0
+                )
+                
+                content = completion.choices[0].message.content
+                
+                # Strip out markdown formatting if the model hallucinates it
+                content = content.replace("```json", "").replace("```", "").strip()
+                action_json = json.loads(content)
+                
+            except Exception as e:
+                # If network fails or proxy errors out, don't crash. Just submit task with error info.
+                action_json = {
+                    "action_type": "SubmitTask", 
+                    "action_data": {"reasoning": f"Network or Parsing Error: {str(e)}"}
+                }
+            # -------------------------------
                 
             # Execute action in the environment
             step_res = send_post("/step", action_json)
@@ -124,7 +132,7 @@ def run_agent():
                 break
                 
     finally:
-        success = score >= 0.5 # Define what constitutes a "success" 
+        success = score >= 0.5 
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 if __name__ == "__main__":
