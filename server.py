@@ -63,10 +63,11 @@ def get_state():
 
 @app.get("/tasks")
 def get_tasks():
-    """Returns the list of tasks and action schema."""
+    """Returns the dictionary of available tasks required by the OpenEnv auto-grader."""
     return {
-        "tasks": ["easy", "medium", "hard"],
-        "action_schema": "ExecuteSQL(query), ReadFile(filepath), WriteFile(filepath, content), ListFiles(directory), SubmitTask(reasoning)"
+        "easy": "Redact the SSN in user_data.txt",
+        "medium": "GDPR Compliance - Delete User 405",
+        "hard": "Data Retention Audit (Find logs older than 5 years)"
     }
 
 @app.post("/grader")
