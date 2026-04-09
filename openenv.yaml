@@ -4,17 +4,9 @@ version: "1.0.0"
 
 observation_space:
   type: text
-  description: Server logs and DB states.
 
 action_space:
-  type: discrete
-  actions:
-    - ExecuteSQL
-    - ReadFile
-    - WriteFile
-    - ListFiles
-    - SubmitTask
-  description: Agent actions.
+  type: text
 
 endpoints:
   health: /
@@ -24,17 +16,11 @@ endpoints:
 
 tasks:
   - id: easy
-    description: Redact the SSN in user_data.txt
-    steps: 1
-    ideal_action: SubmitTask
+    grader: true
   - id: medium
-    description: GDPR Compliance - Delete User 405
-    steps: 1
-    ideal_action: SubmitTask
+    grader: true
   - id: hard
-    description: Data Retention Audit
-    steps: 1
-    ideal_action: SubmitTask
+    grader: true
 
 scoring:
   reward_range: [0.01, 0.99]
